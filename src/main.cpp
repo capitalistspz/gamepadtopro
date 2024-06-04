@@ -1,4 +1,3 @@
-#include "utils/logger.h"
 #include <malloc.h>
 #include <wups.h>
 #include <wups/config/WUPSConfigItemBoolean.h>
@@ -17,8 +16,8 @@ WUPS_PLUGIN_VERSION("v1.0");
 WUPS_PLUGIN_AUTHOR("capitalistspz");
 WUPS_PLUGIN_LICENSE("MIT");
 
-#define ENABLE_CONFIG_ID      "enable"
-#define CHANNEL_CONFIG_ID   "channel"
+#define ENABLE_CONFIG_ID "enable"
+#define CHANNEL_CONFIG_ID "channel"
 
 WUPS_USE_WUT_DEVOPTAB();
 WUPS_USE_STORAGE("gamepadtopro");
@@ -68,9 +67,7 @@ WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHandle ro
                                                     0, kpadChan,
                                                     0, 6,
                                                     &channelItemChanged));
-
     } catch (std::exception &e) {
-        DEBUG_FUNCTION_LINE_ERR("Creating config menu failed: %s", e.what());
         return WUPSCONFIG_API_CALLBACK_RESULT_ERROR;
     }
 
@@ -83,40 +80,16 @@ void ConfigMenuClosedCallback() {
 }
 
 INITIALIZE_PLUGIN() {
-    initLogging();
-
     WUPSConfigAPIOptionsV1 configOptions = {.name = "gamepadtopro"};
-    if (WUPSConfigAPI_Init(configOptions, ConfigMenuOpenedCallback, ConfigMenuClosedCallback) !=
-        WUPSCONFIG_API_RESULT_SUCCESS) {
-        DEBUG_FUNCTION_LINE_ERR("Failed to init config api");
-    }
+    WUPSConfigAPI_Init(configOptions, ConfigMenuOpenedCallback, ConfigMenuClosedCallback);
 
-    WUPSStorageError storageRes;
-    if ((storageRes = WUPSStorageAPI::GetOrStoreDefault(ENABLE_CONFIG_ID, enablePlugin, false)) !=
-        WUPS_STORAGE_ERROR_SUCCESS) {
-        DEBUG_FUNCTION_LINE_ERR("GetOrStoreDefault failed: %s (%d)", WUPSStorageAPI_GetStatusStr(storageRes),
-                                storageRes);
-    }
-    if ((storageRes = WUPSStorageAPI::GetOrStoreDefault(CHANNEL_CONFIG_ID, kpadChan, 0)) !=
-        WUPS_STORAGE_ERROR_SUCCESS) {
-        DEBUG_FUNCTION_LINE_ERR("GetOrStoreDefault failed: %s (%d)", WUPSStorageAPI_GetStatusStr(storageRes),
-                                storageRes);
-    }
-    if ((storageRes = WUPSStorageAPI::SaveStorage()) != WUPS_STORAGE_ERROR_SUCCESS) {
-        DEBUG_FUNCTION_LINE_ERR("GetOrStoreDefault failed: %s (%d)", WUPSStorageAPI_GetStatusStr(storageRes),
-                                storageRes);
-    }
-
-    deinitLogging();
+    WUPSStorageAPI::GetOrStoreDefault(ENABLE_CONFIG_ID, enablePlugin, false);
+    WUPSStorageAPI::GetOrStoreDefault(CHANNEL_CONFIG_ID, kpadChan, 0);
+    WUPSStorageAPI::SaveStorage();
 }
 
 ON_APPLICATION_START() {
-    initLogging();
     applicationTitleId = OSGetTitleID();
-}
-
-ON_APPLICATION_ENDS() {
-    deinitLogging();
 }
 
 ON_APPLICATION_REQUESTS_EXIT() {
@@ -127,15 +100,14 @@ DECL_FUNCTION(int32_t, VPADRead, VPADChan chan, VPADStatus *buffers, uint32_t co
     if (vpadChan != chan || UseReal())
         return real_VPADRead(chan, buffers, count, outError);
     bzero(buffers, sizeof(VPADStatus) * count);
-    *outError = VPADReadError::VPAD_READ_INVALID_CONTROLLER;
+    *outError = VPAD_READ_NO_SAMPLES;
     return 0;
 }
 
 DECL_FUNCTION(int32_t, KPADReadEx, KPADChan channel, KPADStatus *data, uint32_t size, KPADError *outError) {
     if (channel != kpadChan || UseReal())
         return real_KPADReadEx(channel, data, size, outError);
-    if (data == nullptr || size == 0)
-    {
+    if (data == nullptr || size == 0) {
         *outError = KPAD_ERROR_NO_SAMPLES;
         return 0;
     }
@@ -143,7 +115,7 @@ DECL_FUNCTION(int32_t, KPADReadEx, KPADChan channel, KPADStatus *data, uint32_t 
     std::vector<VPADStatus> buffers(size);
     VPADReadError error;
     const auto count = real_VPADRead(vpadChan, buffers.data(), size, &error);
-    if (error != VPADReadError::VPAD_READ_SUCCESS) {
+    if (error != VPADReadError::VPAD_READ_SUCCESS || count == 0) {
         switch (error) {
             case VPAD_READ_NO_SAMPLES:
                 *outError = KPAD_ERROR_NO_SAMPLES;
@@ -160,8 +132,7 @@ DECL_FUNCTION(int32_t, KPADReadEx, KPADChan channel, KPADStatus *data, uint32_t 
         }
         return 0;
     }
-    if (count <= 0)
-        return 0;
+
 
 #define COPY_BTNK(dest_btn, src_btn) kpad.pro.hold |= (vpad.hold & src_btn) ? dest_btn : 0; \
 kpad.pro.trigger |= (vpad.trigger & src_btn) ? dest_btn : 0;                                         \
@@ -313,6 +284,13 @@ DECL_FUNCTION(void, WPADRead, WPADChan chan, void *buffer) {
     wpadStatus->leftStick.y = vpadStatus.leftStick.y * (1 << 15);
 }
 
+DECL_FUNCTION(uint8_t, WPADGetBatteryLevel, WPADChan chan) {
+    if (kpadChan != chan || UseReal())
+        return real_WPADGetBatteryLevel(chan);
+    // Full battery
+    return 4;
+}
+
 WUPS_MUST_REPLACE(KPADReadEx, WUPS_LOADER_LIBRARY_PADSCORE, KPADReadEx);
 WUPS_MUST_REPLACE(KPADRead, WUPS_LOADER_LIBRARY_PADSCORE, KPADRead);
 
@@ -321,5 +299,6 @@ WUPS_MUST_REPLACE(WPADRead, WUPS_LOADER_LIBRARY_PADSCORE, WPADRead);
 
 WUPS_MUST_REPLACE(WPADControlMotor, WUPS_LOADER_LIBRARY_PADSCORE, WPADControlMotor);
 WUPS_MUST_REPLACE(WPADGetDataFormat, WUPS_LOADER_LIBRARY_PADSCORE, WPADGetDataFormat);
+WUPS_MUST_REPLACE(WPADGetBatteryLevel, WUPS_LOADER_LIBRARY_PADSCORE, WPADGetBatteryLevel);
 
 WUPS_MUST_REPLACE(VPADRead, WUPS_LOADER_LIBRARY_VPAD, VPADRead);

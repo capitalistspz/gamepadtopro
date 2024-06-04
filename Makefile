@@ -20,7 +20,7 @@ WUT_ROOT := $(DEVKITPRO)/wut
 #-------------------------------------------------------------------------------
 TARGET		:=	gamepadtopro
 BUILD		:=	build
-SOURCES		:=	src src/utils
+SOURCES		:=	src
 DATA		:=	data
 INCLUDES	:=	src
 
