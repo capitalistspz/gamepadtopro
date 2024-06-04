@@ -20,7 +20,7 @@ WUPS_PLUGIN_LICENSE("MIT");
 #define ENABLE_CONFIG_ID      "enable"
 #define CHANNEL_CONFIG_ID   "channel"
 
-WUPS_USE_WUT_DEVOPTAB();                
+WUPS_USE_WUT_DEVOPTAB();
 WUPS_USE_STORAGE("gamepadtopro");
 
 //! Settings
@@ -32,8 +32,7 @@ VPADChan vpadChan = VPAD_CHAN_0;
 uint64_t applicationTitleId = 0;
 bool configMenuOpen = false;
 
-bool IsGame(uint64_t id)
-{
+bool IsGame(uint64_t id) {
     return (id & 0xFFFFFFFF'00000000ULL) == 0x00050000'00000000ULL;
 }
 
@@ -135,8 +134,13 @@ DECL_FUNCTION(int32_t, VPADRead, VPADChan chan, VPADStatus *buffers, uint32_t co
 DECL_FUNCTION(int32_t, KPADReadEx, KPADChan channel, KPADStatus *data, uint32_t size, KPADError *outError) {
     if (channel != kpadChan || UseReal())
         return real_KPADReadEx(channel, data, size, outError);
-    std::vector<VPADStatus> buffers(size);
+    if (data == nullptr || size == 0)
+    {
+        *outError = KPAD_ERROR_NO_SAMPLES;
+        return 0;
+    }
 
+    std::vector<VPADStatus> buffers(size);
     VPADReadError error;
     const auto count = real_VPADRead(vpadChan, buffers.data(), size, &error);
     if (error != VPADReadError::VPAD_READ_SUCCESS) {
