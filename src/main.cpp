@@ -334,8 +334,8 @@ DECL_FUNCTION(uint8_t, WPADGetBatteryLevel, WPADChan chan) {
     VPADChan vpadChan;
     if (!GetChanIfAllowed(chan, vpadChan))
         return real_WPADGetBatteryLevel(chan);
-    // Full battery
-    return 4;
+    // Full VPAD battery is 0xC0 and full WPAD battery is 0x4
+    return vpadBuffers[vpadChan][std::max((int)vpadBufferCount - 1, 0)].battery / 0x30;
 }
 
 WUPS_MUST_REPLACE(KPADReadEx, WUPS_LOADER_LIBRARY_PADSCORE, KPADReadEx);
