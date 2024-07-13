@@ -92,7 +92,7 @@ WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHandle ro
                                                &enablePluginItemChanged));
 
         root.add(WUPSConfigItemIntegerRange::Create(CHANNEL_0_CONFIG_ID, "Gamepad 0 Channel",
-                                                    0, settings[1].enable,
+                                                    0, settings[0].channel,
                                                     0, 6,
                                                     &channelItemChanged));
 
