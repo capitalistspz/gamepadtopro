@@ -12,7 +12,7 @@
 
 WUPS_PLUGIN_NAME("gamepadtopro");
 WUPS_PLUGIN_DESCRIPTION("Maps Wii U GamePad as a Pro Controller");
-WUPS_PLUGIN_VERSION("v1.0");
+WUPS_PLUGIN_VERSION("v1.1.1");
 WUPS_PLUGIN_AUTHOR("capitalistspz");
 WUPS_PLUGIN_LICENSE("MIT");
 
